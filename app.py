@@ -3,8 +3,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import random
 import json
+import logging
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -23,7 +26,7 @@ def get_place_by_index(index):
 def check_guess(guess, actual_coords):
     geolocator = Nominatim(user_agent="geoGame")
     try:
-        location = geolocator.geocode(guess)
+        location = geolocator.geocode(guess, timeout=10)
         if location is None:
             return "Location not found.", None
         user_coords = (location.latitude, location.longitude)
@@ -37,8 +40,9 @@ def check_guess(guess, actual_coords):
         else:
             message = "Yeah not even close +10 points"
         return message, round(distance)
-    except Exception:
-        return "Something went wrong.", None
+    except Exception as e:
+        logging.error(f"Error in check_guess: {e}")
+        return "Server error. Please try again later.", None
 
 @app.api_route("/", methods=["GET", "POST"], response_class=HTMLResponse)
 async def play(request: Request):
